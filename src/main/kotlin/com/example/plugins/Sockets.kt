@@ -2,17 +2,13 @@ package com.example.plugins
 
 import com.example.BusConnection
 import com.example.DriverConnections
-import com.example.geopos
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import java.time.Duration
 import io.ktor.server.application.*
-import io.ktor.server.response.*
-import io.ktor.server.request.*
 import io.ktor.server.routing.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BroadcastChannel
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.consume
 import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.*
@@ -20,6 +16,7 @@ import java.util.*
 
 var driversConnections = Collections.synchronizedList<DriverConnections>(mutableListOf())
 
+@OptIn(ObsoleteCoroutinesApi::class)
 fun Application.configureSockets() {
     install(WebSockets) {
         pingPeriod = Duration.ofSeconds(15)
@@ -27,11 +24,17 @@ fun Application.configureSockets() {
         maxFrameSize = Long.MAX_VALUE
         masking = false
     }
-    suspend fun performRequest(request: Int, positionFrame: BroadcastChannel<Frame>):Int{
-        delay(5000)
-var a = request
-        return a
+    suspend fun positionRecive(position: BroadcastChannel<Frame>): String {
+// Не могу получить frame из канала
+//  а так все работает, то есть ечли подключить 3 водителя до диспетчер будет видеть из id
+        return ""
     }
+
+    suspend fun performRequest(busId: Int, busPosition: BroadcastChannel<Frame>): BusConnection {
+        delay(5000)
+        return BusConnection(busId, positionRecive(busPosition))
+    }
+
     routing {
         webSocket("/all") {
             GlobalScope.launch(Dispatchers.Default) {
@@ -39,9 +42,7 @@ var a = request
                     try {
                         driversConnections.asFlow().map { v ->
                             performRequest(v.id.toInt(), v.channel)
-                        }.collect {
-
-                                response ->
+                        }.collect { response ->
                             send(response.toString())
                             println(response)
                         }
@@ -49,31 +50,9 @@ var a = request
                         println("Error $e")
                     }
                 }
-
             }.join()
         }
-        webSocket("/dispetcher") {
-            GlobalScope.launch() {
-                while (true) {
-                    delay(1000)
 
-                    driversConnections.asFlow()
-
-                        .collect() {
-
-                            it.channel.consumeEach { value ->
-
-                                send(value.copy())
-                                println(BusConnection(it.id.toInt(), value.copy().toString()))
-                            }
-                        }
-                    if (driversConnections.isEmpty()) {
-
-                        close(CloseReason(CloseReason.Codes.NORMAL, "DriverConnections is null"))
-                    }
-                }
-            }.join()
-        }
         webSocket("/driver/{idDriver}") {
             val idDriver = call.parameters["idDriver"]
             if (idDriver == null) close(CloseReason(CloseReason.Codes.NORMAL, "Driver is null"))
@@ -89,24 +68,6 @@ var a = request
                 driver.startBroadcast()
             }
         }
-        webSocket("/passenger/{idpassenger}") {
-            val idpassenger = call.parameters["idpassenger"].toString()
-            if (idpassenger == null) close()
 
-            launch {
-                var driver = driversConnections.find { idpassenger == it.id } ?: DriverConnections()
-
-
-                println("driver $driver")
-                driver?.let {
-
-                    it.channel.consumeEach { frame ->
-                        send(frame.copy())
-                        println("frame.copy()  ${frame.copy()}")
-                    }
-                }
-            }.join()
-
-        }
     }
 }
