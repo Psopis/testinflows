@@ -26,7 +26,7 @@ fun Application.configureSockets() {
     }
     suspend fun positionRecive(position: BroadcastChannel<Frame>): String {
 // Не могу получить frame из канала
-//  а так все работает, то есть ечли подключить 3 водителя до диспетчер будет видеть из id
+//  а так все работает, то есть если подключить 3 водителя то диспетчер будет видеть их id
         return ""
     }
 
