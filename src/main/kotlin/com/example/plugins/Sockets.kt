@@ -2,6 +2,8 @@ package com.example.plugins
 
 import com.example.BusConnection
 import com.example.DriverConnections
+import com.example.DriverGenerator
+import com.example.buschannel
 import io.ktor.server.websocket.*
 import io.ktor.websocket.*
 import java.time.Duration
@@ -16,6 +18,7 @@ import java.util.*
 
 var driversConnections = Collections.synchronizedList<DriverConnections>(mutableListOf())
 
+
 @OptIn(ObsoleteCoroutinesApi::class)
 fun Application.configureSockets() {
     install(WebSockets) {
@@ -24,34 +27,48 @@ fun Application.configureSockets() {
         maxFrameSize = Long.MAX_VALUE
         masking = false
     }
-    suspend fun positionRecive(position: BroadcastChannel<Frame>): String {
-// Не могу получить frame из канала
-//  а так все работает, то есть если подключить 3 водителя то диспетчер будет видеть их id
-        return ""
-    }
 
-    suspend fun performRequest(busId: Int, busPosition: BroadcastChannel<Frame>): BusConnection {
-        delay(5000)
-        return BusConnection(busId, positionRecive(busPosition))
-    }
+
+
 
     routing {
         webSocket("/all") {
-            GlobalScope.launch(Dispatchers.Default) {
+
+            GlobalScope.launch {
+                buschannel.consumeEach{ response ->
+                    println(1)
+                    send(response.toString())
+                }
+            }
+
                 while (true) {
-                    try {
-                        driversConnections.asFlow().map { v ->
-                            performRequest(v.id.toInt(), v.channel)
-                        }.collect { response ->
-                            send(response.toString())
-                            println(response)
-                        }
-                    } catch (e: Throwable) {
-                        println("Error $e")
+                    delay(2000)
+                    if (driversConnections != null) {
+                        DriverGenerator.connect()
+                    } else {
+                        DriverGenerator.disconnect()
                     }
                 }
-            }.join()
+
+
+
         }
+
+
+
+
+//                    driversConnections.asFlow()
+//                        .collect { response ->
+//
+//                            response.channel.consumeEach { value ->
+//                                send(BusConnection(response.id.toInt(), value.toString()).toString())
+//                            }
+//                        }
+//                }
+
+
+
+
 
         webSocket("/driver/{idDriver}") {
             val idDriver = call.parameters["idDriver"]
