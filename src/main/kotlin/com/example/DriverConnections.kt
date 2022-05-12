@@ -26,7 +26,7 @@ class DriverConnections(
 
         connection?.let { connect ->
             for (frame in connect.incoming) {
-                println(this)
+
 
                 channel.send(frame.copy())
                 }

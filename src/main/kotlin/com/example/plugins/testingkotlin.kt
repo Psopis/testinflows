@@ -10,23 +10,25 @@ import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.flow.*
 data class user(var id : String, var frame : String)
 object Generator {
-
     var job: Job? = null
     fun connect() {
         job = GlobalScope.launch {
             for (i in 0 until 100) {
-                sf.send(user("1", (1..10).random().toString()))
-                delay(1000)
+                sf.send(user("1", "$i"))
+                job?.cancel()
+                delay(2000)
             }
         }
+
     }
     fun disconnect() {
         job?.cancel()
         job = null
     }
 }
+
 //val sf = MutableSharedFlow<Int>()
-val sf = BroadcastChannel<user>(1)
+val sf : BroadcastChannel<user> = BroadcastChannel<user>(1)
 
 fun main(): Unit {
     val action : (i : user) -> Unit = {
@@ -36,6 +38,7 @@ println(user(it.id, it.frame))
         GlobalScope.launch {
             sf.consumeEach{ response ->
                 action(response)
+
             }
         }
 
@@ -44,8 +47,10 @@ println(user(it.id, it.frame))
     while (true) {
         if (readLine() == "1") {
             Generator.connect()
+
         } else {
             Generator.disconnect()
+
         }
     }
     //дис

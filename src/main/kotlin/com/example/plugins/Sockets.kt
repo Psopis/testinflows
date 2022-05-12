@@ -33,12 +33,18 @@ fun Application.configureSockets() {
 
     routing {
         webSocket("/all") {
+var x = 0
+            GlobalScope.launch(Dispatchers.Default) {
 
-            GlobalScope.launch {
-                buschannel.consumeEach{ response ->
-                    println(1)
+                buschannel.collect(){ response ->
+                    x += 1
+
+                    println(x)
+
                     send(response.toString())
+                    delay(5000)
                 }
+
             }
 
                 while (true) {
